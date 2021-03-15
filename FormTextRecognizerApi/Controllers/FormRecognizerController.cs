@@ -24,6 +24,8 @@ namespace FormTextRecognizerApi.Controllers
         private static string formUrl = string.Empty;
         private static string returnString = string.Empty;
 
+        private static ReleaseOfQuarantine roq;
+
         #endregion
 
         #region Public EndPoints
@@ -59,8 +61,8 @@ namespace FormTextRecognizerApi.Controllers
         }
 
         [HttpPost]
-        [Route("api/CustomForm")]
-        public ActionResult CustomForm([FromBody] FormCustom newForm)
+        [Route("api/ReleaseOfQuarantineForm")]
+        public ActionResult CustomForm([FromBody] Form newForm)
         {
             formUrl = newForm.formURL;
             returnString = string.Empty;
@@ -68,10 +70,10 @@ namespace FormTextRecognizerApi.Controllers
             var recognizerClient = AuthenticateClient();
             var trainingClient = AuthenticateTrainingClient();
 
-            var analyzeForm = AnalyzePdfForm(recognizerClient,newForm.modelID);
+            var analyzeForm = RecognizeReleaseOfQuarantine(recognizerClient);
             Task.WaitAll(analyzeForm);
 
-            return Ok(returnString);
+            return Ok(roq);
         }
         #endregion
 
@@ -102,7 +104,8 @@ namespace FormTextRecognizerApi.Controllers
                 {
                     FormLine line = page.Lines[i];
 
-                    returnString += $"{line.Text}{Environment.NewLine}";
+                    //returnString += $"{line.Text}{Environment.NewLine}";
+                    returnString += $"    Line {i} has {line.Words.Count} word{(line.Words.Count > 1 ? "s" : "")}, and text: '{line.Text}'.{Environment.NewLine}";
                 }
                 //tables
                 for (int i = 0; i < page.Tables.Count; i++)
@@ -110,7 +113,8 @@ namespace FormTextRecognizerApi.Controllers
                     FormTable table = page.Tables[i];
                     foreach (FormTableCell cell in table.Cells)
                     {
-                        returnString += $"{cell.Text} ";
+                        //returnString += $"{cell.Text} ";
+                        returnString += $"    Cell ({cell.RowIndex}, {cell.ColumnIndex}) contains text: '{cell.Text}'.{Environment.NewLine}";
                     }
                 }
             }
@@ -125,13 +129,13 @@ namespace FormTextRecognizerApi.Controllers
             foreach (RecognizedForm receipt in receipts)
             {
                 FormField merchantNameField;
-                if (receipt.Fields.TryGetValue("MerchantName", out merchantNameField))
+                if (receipt.Fields.TryGetValue("COUNTY", out merchantNameField))
                 {
                     if (merchantNameField.Value.ValueType == FieldValueType.String)
                     {
                         string merchantName = merchantNameField.Value.AsString();
 
-                        returnString += $"Merchant Name: '{merchantName}', with confidence {merchantNameField.Confidence}{Environment.NewLine}";
+                        returnString += $"COunty Name: '{merchantName}', with confidence {merchantNameField.Confidence}{Environment.NewLine}";
                     }
                 }
 
@@ -146,13 +150,13 @@ namespace FormTextRecognizerApi.Controllers
                     }
                 }
                 FormField totalField;
-                if (receipt.Fields.TryGetValue("Total", out totalField))
+                if (receipt.Fields.TryGetValue("TIME", out totalField))
                 {
-                    if (totalField.Value.ValueType == FieldValueType.Float)
+                    if (totalField.Value.ValueType == FieldValueType.String)
                     {
-                        float total = totalField.Value.AsFloat();
+                        string aTime = totalField.Value.AsString();
 
-                        returnString += $"Total: '{total}', with confidence '{totalField.Confidence}'{Environment.NewLine}";
+                        returnString += $"TIme: '{aTime}', with confidence '{totalField.Confidence}'{Environment.NewLine}";
                     }
                 }
                 FormField toField;
@@ -181,7 +185,7 @@ namespace FormTextRecognizerApi.Controllers
         #endregion
 
         #region Custom Form
-        private static async Task AnalyzePdfForm(FormRecognizerClient recognizerClient, String modelId) 
+        private static async Task AnalyzePdfForm(FormRecognizerClient recognizerClient, String modelId)
         {
             RecognizedFormCollection forms = await recognizerClient.StartRecognizeCustomFormsFromUri(modelId, new Uri(formUrl)).WaitForCompletionAsync();
 
@@ -217,5 +221,93 @@ namespace FormTextRecognizerApi.Controllers
 
         }
         #endregion
+
+        #region Release Of Quarantine Form
+
+        private static async Task RecognizeReleaseOfQuarantine(FormRecognizerClient recognizerClient)
+        {
+            FormPageCollection formPages = await recognizerClient
+                .StartRecognizeContentFromUri(new Uri(formUrl))
+                .WaitForCompletionAsync();
+            roq = new ReleaseOfQuarantine();
+
+            foreach (FormPage page in formPages)
+            {
+                for (int i = 0; i < page.Lines.Count; i++)
+                {
+                    FormLine line = page.Lines[i];
+
+                    if (line.Text.Contains("DATE:"))
+                    {
+                        roq.FormDate = $"{page.Lines[i + 1].Text}";
+                    }
+                    if (line.Text.Contains("TIME"))
+                    {
+                        roq.FormTime = $"{page.Lines[i + 1].Text}";
+                    }
+                    if (line.Text.Contains("COUNTY"))
+                    {
+                        roq.FormCounty = $"{page.Lines[i + 1].Text}";
+                    }
+                    if (line.Text.Contains("PREMISE NAME AND ADDRESS"))
+                    {
+                        roq.PremiseNameAndAddress = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                    }
+                    if (line.Text.Contains("CONTACT INFORMATION FOR OWNER/REPRESENTATIVE"))
+                    {
+                        roq.ContactInformationFOrOwner = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                    }
+                    if (line.Text.Contains("DESCRIPTION OF ANIMALS"))
+                    {
+                        if (page.Lines[i + 6].Text.Contains("RELEASE OF QUARANTINE"))
+                        {
+                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}";
+                        }
+                        else if (page.Lines[i + 7].Text.Contains("RELEASE OF QUARANTINE"))
+                        {
+                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}";
+                        }
+                        else if (page.Lines[i + 9].Text.Contains("RELEASE OF QUARANTINE"))
+                        {
+                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                        }
+                    }
+                    if (line.Text.Contains("PHYSICAL LOCATION OF ANIMALS"))
+                    {
+                        if (page.Lines[i + 5].Text.Contains("RELEASE OF QUARANTINE"))
+                        {
+                            roq.AnimalLocation = $"{page.Lines[i + 2].Text}, {page.Lines[i + 3].Text}, {page.Lines[i + 4].Text}";
+                        }
+                        else if (page.Lines[i + 6].Text.Contains("RELEASE OF QUARANTINE"))
+                        {
+                            roq.AnimalLocation = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 5].Text}";
+                        }
+                    }
+                    if (line.Text.Contains("RELEASE OF QUARANTINE"))
+                    {
+                        roq.ReleaseOfQuarantineDate = $"{page.Lines[i + 1].Text}";
+                    }
+                    if (line.Text.Contains("Quarantine placed"))
+                    {
+                        roq.QuarantinedPlacedOn = $"{page.Lines[i + 1].Text}";
+                    }
+                    if (line.Text.Contains("Check if any conditions for Release and Describe Conditions"))
+                    {
+                        int startIndex = 2; 
+                        roq.ConditionDescription = $"{page.Lines[i + startIndex].Text}";
+
+                        while((!page.Lines[i + startIndex].Text.Contains("OWNER’S ACKNOWLEDGEMENT AND SIGNATURE")))
+                        {
+                            roq.ConditionDescription += $"{page.Lines[i + startIndex].Text}";
+                            startIndex++;
+                        }
+                    }
+
+                }
+            }
+
+            #endregion
+
+        }
     }
 }
