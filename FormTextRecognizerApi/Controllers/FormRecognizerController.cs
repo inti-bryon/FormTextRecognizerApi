@@ -16,6 +16,7 @@ namespace FormTextRecognizerApi.Controllers
     [ApiController]
     public class FormRecognizerController : ControllerBase
     {
+
         #region Static Variables 
         private static readonly string endpoint = "https://ibsample01.cognitiveservices.azure.com/";
         private static readonly string apiKey = "4fac4df99c1f4468895556b9e6811b82";
