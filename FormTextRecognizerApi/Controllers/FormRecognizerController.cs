@@ -18,8 +18,8 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "https://XXXXXXXXXXXXXX.cognitiveservices.azure.com/";
-        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string endpoint = "https://ibsample01.cognitiveservices.azure.com/";
+        private static readonly string apiKey = "4fac4df99c1f4468895556b9e6811b82";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string formUrl = string.Empty;
         private static string returnString = string.Empty;
@@ -36,8 +36,10 @@ namespace FormTextRecognizerApi.Controllers
         {
             formUrl = newForm.formURL;
             returnString = string.Empty;
+
             var recognizerClient = AuthenticateClient();
             var trainingClient = AuthenticateTrainingClient();
+
             var recognizeContent = RecognizeContent(recognizerClient);
             Task.WaitAll(recognizeContent);
 
@@ -251,11 +253,15 @@ namespace FormTextRecognizerApi.Controllers
                     }
                     if (line.Text.Contains("PREMISE NAME AND ADDRESS"))
                     {
-                        roq.PremiseNameAndAddress = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                        roq.PremiseNameAndAddress = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
+
+
+                        //until DESCRIPTION OF ANIMALS
+
                     }
                     if (line.Text.Contains("CONTACT INFORMATION FOR OWNER/REPRESENTATIVE"))
                     {
-                        roq.ContactInformationFOrOwner = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                        roq.ContactInformationFOrOwner = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
                     }
                     if (line.Text.Contains("DESCRIPTION OF ANIMALS"))
                     {
@@ -265,25 +271,25 @@ namespace FormTextRecognizerApi.Controllers
                         }
                         else if (page.Lines[i + 7].Text.Contains("RELEASE OF QUARANTINE"))
                         {
-                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}";
+                            roq.AnimalDescription = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text}";
                         }
                         else if (page.Lines[i + 9].Text.Contains("RELEASE OF QUARANTINE"))
                         {
-                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 6].Text}";
+                            roq.AnimalDescription = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
                         }
                     }
                     if (line.Text.Contains("PHYSICAL LOCATION OF ANIMALS"))
                     {
                         if (page.Lines[i + 5].Text.Contains("RELEASE OF QUARANTINE"))
                         {
-                            roq.AnimalLocation = $"{page.Lines[i + 2].Text}, {page.Lines[i + 3].Text}, {page.Lines[i + 4].Text}";
+                            roq.AnimalLocation = $"{page.Lines[i + 2].Text} {page.Lines[i + 3].Text} {page.Lines[i + 4].Text}";
                         }
                         else if (page.Lines[i + 6].Text.Contains("RELEASE OF QUARANTINE"))
                         {
-                            roq.AnimalLocation = $"{page.Lines[i + 2].Text}, {page.Lines[i + 4].Text}, {page.Lines[i + 5].Text}";
+                            roq.AnimalLocation = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 5].Text}";
                         }
                     }
-                    if (line.Text.Contains("RELEASE OF QUARANTINE"))
+                    if (line.Text.Contains("RELEASE OF QUARANTINE") && i > 10)
                     {
                         roq.ReleaseOfQuarantineDate = $"{page.Lines[i + 1].Text}";
                     }
@@ -293,12 +299,11 @@ namespace FormTextRecognizerApi.Controllers
                     }
                     if (line.Text.Contains("Check if any conditions for Release and Describe Conditions"))
                     {
-                        int startIndex = 2; 
-                        roq.ConditionDescription = $"{page.Lines[i + startIndex].Text}";
-
-                        while((!page.Lines[i + startIndex].Text.Contains("OWNER’S ACKNOWLEDGEMENT AND SIGNATURE")))
+                        int startIndex = i + 1;
+                        while (!page.Lines[startIndex].Text.Contains("ACKNOWLEDGEMENT AND SIGNATURE"))
                         {
-                            roq.ConditionDescription += $"{page.Lines[i + startIndex].Text}";
+                            //startIndex++;
+                            roq.ConditionDescription += $"{page.Lines[startIndex].Text}";
                             startIndex++;
                         }
                     }
