@@ -18,12 +18,11 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "https://ibsample01.cognitiveservices.azure.com/";
-        private static readonly string apiKey = "4fac4df99c1f4468895556b9e6811b82";
+        private static readonly string endpoint = "https://XXXXXXXXXXXXXXX.cognitiveservices.azure.com/";
+        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string formUrl = string.Empty;
         private static string returnString = string.Empty;
-
         private static ReleaseOfQuarantine roq;
 
         #endregion
@@ -64,7 +63,7 @@ namespace FormTextRecognizerApi.Controllers
 
         [HttpPost]
         [Route("api/ReleaseOfQuarantineForm")]
-        public ActionResult CustomForm([FromBody] Form newForm)
+        public ActionResult ReleaseOfQuarantineForm([FromBody] Form newForm)
         {
             formUrl = newForm.formURL;
             returnString = string.Empty;
@@ -73,6 +72,22 @@ namespace FormTextRecognizerApi.Controllers
             var trainingClient = AuthenticateTrainingClient();
 
             var analyzeForm = RecognizeReleaseOfQuarantine(recognizerClient);
+            Task.WaitAll(analyzeForm);
+
+            return Ok(roq);
+        }
+
+        [HttpPost]
+        [Route("api/CustomModel")]
+        public ActionResult CustomForm([FromBody] FormCustom newForm)
+        {
+            formUrl = newForm.formURL;
+            returnString = string.Empty;
+
+            var recognizerClient = AuthenticateClient();
+            var trainingClient = AuthenticateTrainingClient();
+
+            var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.modelID);
             Task.WaitAll(analyzeForm);
 
             return Ok(roq);
@@ -187,9 +202,37 @@ namespace FormTextRecognizerApi.Controllers
         #endregion
 
         #region Custom Form
-        private static async Task AnalyzePdfForm(FormRecognizerClient recognizerClient, String modelId)
+
+        private static async Task AnalyzeCustomForm2(FormRecognizerClient recognizerClient, string modelID)
         {
-            RecognizedFormCollection forms = await recognizerClient.StartRecognizeCustomFormsFromUri(modelId, new Uri(formUrl)).WaitForCompletionAsync();
+            RecognizeCustomFormsOperation operation = await recognizerClient.StartRecognizeCustomFormsFromUriAsync(modelID, new Uri(formUrl));
+            Response<RecognizedFormCollection> operationResponse = await operation.WaitForCompletionAsync();
+            RecognizedFormCollection forms = operationResponse.Value;
+
+            foreach (RecognizedForm form in forms)
+            {
+                Console.WriteLine($"Form of type: {form.FormType}");
+                //if (form.FormTypeConfidence.HasValue)
+                //    Console.WriteLine($"Form type confidence: {form.FormTypeConfidence.Value}");
+                //Console.WriteLine($"Form was analyzed with model with ID: {form.ModelId}");
+                foreach (FormField field in form.Fields.Values)
+                {
+                    Console.WriteLine($"Field '{field.Name}': ");
+
+                    if (field.LabelData != null)
+                    {
+                        Console.WriteLine($"  Label: '{field.LabelData.Text}'");
+                    }
+
+                    Console.WriteLine($"  Value: '{field.ValueData.Text}'");
+                    Console.WriteLine($"  Confidence: '{field.Confidence}'");
+                }
+            }
+        }
+        private static async Task AnalyzeCustomForm(FormRecognizerClient recognizerClient, String modelId)
+        {
+            RecognizeCustomFormsOptions options = new RecognizeCustomFormsOptions();
+            RecognizedFormCollection forms = await recognizerClient.StartRecognizeCustomFormsFromUri(modelId, new Uri(formUrl), options).WaitForCompletionAsync();
 
             foreach (RecognizedForm form in forms)
             {
@@ -254,10 +297,7 @@ namespace FormTextRecognizerApi.Controllers
                     if (line.Text.Contains("PREMISE NAME AND ADDRESS"))
                     {
                         roq.PremiseNameAndAddress = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
-
-
                         //until DESCRIPTION OF ANIMALS
-
                     }
                     if (line.Text.Contains("CONTACT INFORMATION FOR OWNER/REPRESENTATIVE"))
                     {
@@ -302,17 +342,15 @@ namespace FormTextRecognizerApi.Controllers
                         int startIndex = i + 1;
                         while (!page.Lines[startIndex].Text.Contains("ACKNOWLEDGEMENT AND SIGNATURE"))
                         {
-                            //startIndex++;
                             roq.ConditionDescription += $"{page.Lines[startIndex].Text}";
                             startIndex++;
                         }
                     }
-
                 }
             }
-
-            #endregion
-
         }
+
+        #endregion
+
     }
 }
