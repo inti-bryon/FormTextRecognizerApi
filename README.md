@@ -1,5 +1,5 @@
 # FormTextRecognizerApi
-##Form Recognizer Sample API
+## Form Recognizer Sample API
 
 Sample .NET 5.0 API used to demo the **FormRecognition** Cognitive Service.
 
