@@ -5,8 +5,8 @@ Sample .NET 5.0 API used to demo the **FormRecognition** Cognitive Service.
 
 To run locally, you must update the lines of code: 
 
-        *private static readonly string endpoint = "**[ENTER YOUR API ENDPOINT]**";*
-        *private static readonly string apiKey = "**[ENTER YOUR API KEY]**";*
+        private static readonly string endpoint = "[ENTER YOUR API ENDPOINT]";
+        private static readonly string apiKey = "[ENTER YOUR API KEY]";
         
         
 1. use the *api/FormRecognizer* endpoint for general text recognition and a simple string return
