@@ -18,8 +18,8 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXX";
-        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string returnString = string.Empty;
 
@@ -55,17 +55,17 @@ namespace FormTextRecognizerApi.Controllers
             return Ok(returnString);
         }
 
-        [HttpPost]
-        [Route("api/RemoveModel")]
-        public ActionResult RemoveModel([FromBody] FormDelete newForm)
-        {
+        //[HttpPost]
+        //[Route("api/RemoveModel")]
+        //public ActionResult RemoveModel([FromBody] FormDelete newForm)
+        //{
 
-            var recognizerClient = AuthenticateClient();
-            var deleteModel = DeleteModel(recognizerClient, newForm.modelId);
-            Task.WaitAll(deleteModel);
+        //    var recognizerClient = AuthenticateClient();
+        //    var deleteModel = DeleteModel(recognizerClient, newForm.modelId);
+        //    Task.WaitAll(deleteModel);
 
-            return Ok($"Model ID#: {newForm.modelId} has been removed.");
-        }
+        //    return Ok($"Model ID#: {newForm.modelId} has been removed.");
+        //}
 
         #endregion
 
