@@ -18,12 +18,10 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "https://XXXXXXXXXXXXXXX.cognitiveservices.azure.com/";
-        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXX";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
-        private static string formUrl = string.Empty;
         private static string returnString = string.Empty;
-        private static ReleaseOfQuarantine roq;
 
         #endregion
 
@@ -33,65 +31,51 @@ namespace FormTextRecognizerApi.Controllers
         [Route("api/FormRecognizer")]
         public ActionResult FormRecognizer([FromBody] Form newForm)
         {
-            formUrl = newForm.formURL;
             returnString = string.Empty;
 
             var recognizerClient = AuthenticateClient();
-            var trainingClient = AuthenticateTrainingClient();
 
-            var recognizeContent = RecognizeContent(recognizerClient);
+            var recognizeContent = RecognizeContent(recognizerClient, newForm.formURL);
             Task.WaitAll(recognizeContent);
 
             return Ok(returnString);
         }
 
         [HttpPost]
-        [Route("api/ReceiptReader")]
-        public ActionResult ReceiptReader([FromBody] Form newForm)
+        [Route("api/CustomModel")]
+        public ActionResult CustomForm([FromBody] FormCustom newForm)
         {
-            formUrl = newForm.formURL;
             returnString = string.Empty;
 
             var recognizerClient = AuthenticateClient();
-            var trainingClient = AuthenticateTrainingClient();
 
-            var analyzeReceipt = AnalyzeReceipt(recognizerClient);
-            Task.WaitAll(analyzeReceipt);
+            var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.locationURL, newForm.formURL);            
+            Task.WaitAll(analyzeForm);
 
             return Ok(returnString);
         }
 
         [HttpPost]
-        [Route("api/ReleaseOfQuarantineForm")]
-        public ActionResult ReleaseOfQuarantineForm([FromBody] Form newForm)
+        [Route("api/RemoveModel")]
+        public ActionResult RemoveModel([FromBody] FormDelete newForm)
         {
-            formUrl = newForm.formURL;
-            returnString = string.Empty;
 
             var recognizerClient = AuthenticateClient();
-            var trainingClient = AuthenticateTrainingClient();
+            var deleteModel = DeleteModel(recognizerClient, newForm.modelId);
+            Task.WaitAll(deleteModel);
 
-            var analyzeForm = RecognizeReleaseOfQuarantine(recognizerClient);
-            Task.WaitAll(analyzeForm);
-
-            return Ok(roq);
+            return Ok($"Model ID#: {newForm.modelId} has been removed.");
         }
 
-        [HttpPost]
-        [Route("api/CustomModel")]
-        public ActionResult CustomForm([FromBody] FormCustom newForm)
+        #endregion
+
+        #region Delete Form
+        private static async Task DeleteModel(FormRecognizerClient recognizerClient, string modelID)
         {
-            formUrl = newForm.formURL;
-            returnString = string.Empty;
-
-            var recognizerClient = AuthenticateClient();
-            var trainingClient = AuthenticateTrainingClient();
-
-            var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.modelID);
-            Task.WaitAll(analyzeForm);
-
-            return Ok(roq);
+            FormTrainingClient trainingClient = new FormTrainingClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+            await trainingClient.DeleteModelAsync(modelID);
         }
+
         #endregion
 
         #region Form Recognizer
@@ -109,7 +93,7 @@ namespace FormTextRecognizerApi.Controllers
             return client;
         }
 
-        private static async Task RecognizeContent(FormRecognizerClient recognizerClient)
+        private static async Task RecognizeContent(FormRecognizerClient recognizerClient, string formUrl)
         {
             FormPageCollection formPages = await recognizerClient
                 .StartRecognizeContentFromUri(new Uri(formUrl))
@@ -138,101 +122,23 @@ namespace FormTextRecognizerApi.Controllers
         }
         #endregion
 
-        # region Receipt Reader
-        private static async Task AnalyzeReceipt(FormRecognizerClient recognizerClient)
-        {
-            RecognizedFormCollection receipts = await recognizerClient.StartRecognizeReceiptsFromUri(new Uri(formUrl)).WaitForCompletionAsync();
-
-            foreach (RecognizedForm receipt in receipts)
-            {
-                FormField merchantNameField;
-                if (receipt.Fields.TryGetValue("COUNTY", out merchantNameField))
-                {
-                    if (merchantNameField.Value.ValueType == FieldValueType.String)
-                    {
-                        string merchantName = merchantNameField.Value.AsString();
-
-                        returnString += $"COunty Name: '{merchantName}', with confidence {merchantNameField.Confidence}{Environment.NewLine}";
-                    }
-                }
-
-                FormField transactionDateField;
-                if (receipt.Fields.TryGetValue("TransactionDate", out transactionDateField))
-                {
-                    if (transactionDateField.Value.ValueType == FieldValueType.Date)
-                    {
-                        DateTime transactionDate = transactionDateField.Value.AsDate();
-
-                        returnString += $"Transaction Date: '{transactionDate}', with confidence {transactionDateField.Confidence}{Environment.NewLine}";
-                    }
-                }
-                FormField totalField;
-                if (receipt.Fields.TryGetValue("TIME", out totalField))
-                {
-                    if (totalField.Value.ValueType == FieldValueType.String)
-                    {
-                        string aTime = totalField.Value.AsString();
-
-                        returnString += $"TIme: '{aTime}', with confidence '{totalField.Confidence}'{Environment.NewLine}";
-                    }
-                }
-                FormField toField;
-                if (receipt.Fields.TryGetValue("To", out toField))
-                {
-                    if (toField.Value.ValueType == FieldValueType.String)
-                    {
-                        string total = toField.Value.AsString();
-
-                        returnString += $"To:: '{total}', with confidence '{toField.Confidence}'{Environment.NewLine}";
-                    }
-                }
-                FormField fromField;
-                if (receipt.Fields.TryGetValue("From", out fromField))
-                {
-                    if (fromField.Value.ValueType == FieldValueType.String)
-                    {
-                        string total = fromField.Value.AsString();
-
-                        returnString += $"From: '{total}', with confidence '{totalField.Confidence}'{Environment.NewLine}";
-                    }
-                }
-            }
-
-        }
-        #endregion
-
         #region Custom Form
 
-        private static async Task AnalyzeCustomForm2(FormRecognizerClient recognizerClient, string modelID)
-        {
-            RecognizeCustomFormsOperation operation = await recognizerClient.StartRecognizeCustomFormsFromUriAsync(modelID, new Uri(formUrl));
-            Response<RecognizedFormCollection> operationResponse = await operation.WaitForCompletionAsync();
-            RecognizedFormCollection forms = operationResponse.Value;
-
-            foreach (RecognizedForm form in forms)
-            {
-                Console.WriteLine($"Form of type: {form.FormType}");
-                //if (form.FormTypeConfidence.HasValue)
-                //    Console.WriteLine($"Form type confidence: {form.FormTypeConfidence.Value}");
-                //Console.WriteLine($"Form was analyzed with model with ID: {form.ModelId}");
-                foreach (FormField field in form.Fields.Values)
-                {
-                    Console.WriteLine($"Field '{field.Name}': ");
-
-                    if (field.LabelData != null)
-                    {
-                        Console.WriteLine($"  Label: '{field.LabelData.Text}'");
-                    }
-
-                    Console.WriteLine($"  Value: '{field.ValueData.Text}'");
-                    Console.WriteLine($"  Confidence: '{field.Confidence}'");
-                }
-            }
-        }
-        private static async Task AnalyzeCustomForm(FormRecognizerClient recognizerClient, String modelId)
+        private static async Task AnalyzeCustomForm(FormRecognizerClient recognizerClient, string trainingFileUrl, string formUrl)
         {
             RecognizeCustomFormsOptions options = new RecognizeCustomFormsOptions();
-            RecognizedFormCollection forms = await recognizerClient.StartRecognizeCustomFormsFromUri(modelId, new Uri(formUrl), options).WaitForCompletionAsync();
+
+            //train model
+            FormTrainingClient trainingClient = new FormTrainingClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
+            CustomFormModel model = await trainingClient.StartTrainingAsync(new Uri(trainingFileUrl), useTrainingLabels: false, $"VIS-Dynamic-Model-{DateTime.Now.ToShortTimeString()}").WaitForCompletionAsync();
+
+            //string modelId = inModelID;
+            string modelId = model.ModelId;
+
+            //recognize form
+            RecognizeCustomFormsOperation operation = await recognizerClient.StartRecognizeCustomFormsFromUriAsync(modelId, new Uri(formUrl));
+            Response<RecognizedFormCollection> operationResponse = await operation.WaitForCompletionAsync();
+            RecognizedFormCollection forms = operationResponse.Value;
 
             foreach (RecognizedForm form in forms)
             {
@@ -263,94 +169,10 @@ namespace FormTextRecognizerApi.Controllers
                     }
                 }
             }
+            // Delete the model on completion to clean environment.
+            await trainingClient.DeleteModelAsync(model.ModelId);
 
         }
         #endregion
-
-        #region Release Of Quarantine Form
-
-        private static async Task RecognizeReleaseOfQuarantine(FormRecognizerClient recognizerClient)
-        {
-            FormPageCollection formPages = await recognizerClient
-                .StartRecognizeContentFromUri(new Uri(formUrl))
-                .WaitForCompletionAsync();
-            roq = new ReleaseOfQuarantine();
-
-            foreach (FormPage page in formPages)
-            {
-                for (int i = 0; i < page.Lines.Count; i++)
-                {
-                    FormLine line = page.Lines[i];
-
-                    if (line.Text.Contains("DATE:"))
-                    {
-                        roq.FormDate = $"{page.Lines[i + 1].Text}";
-                    }
-                    if (line.Text.Contains("TIME"))
-                    {
-                        roq.FormTime = $"{page.Lines[i + 1].Text}";
-                    }
-                    if (line.Text.Contains("COUNTY"))
-                    {
-                        roq.FormCounty = $"{page.Lines[i + 1].Text}";
-                    }
-                    if (line.Text.Contains("PREMISE NAME AND ADDRESS"))
-                    {
-                        roq.PremiseNameAndAddress = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
-                        //until DESCRIPTION OF ANIMALS
-                    }
-                    if (line.Text.Contains("CONTACT INFORMATION FOR OWNER/REPRESENTATIVE"))
-                    {
-                        roq.ContactInformationFOrOwner = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
-                    }
-                    if (line.Text.Contains("DESCRIPTION OF ANIMALS"))
-                    {
-                        if (page.Lines[i + 6].Text.Contains("RELEASE OF QUARANTINE"))
-                        {
-                            roq.AnimalDescription = $"{page.Lines[i + 2].Text}";
-                        }
-                        else if (page.Lines[i + 7].Text.Contains("RELEASE OF QUARANTINE"))
-                        {
-                            roq.AnimalDescription = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text}";
-                        }
-                        else if (page.Lines[i + 9].Text.Contains("RELEASE OF QUARANTINE"))
-                        {
-                            roq.AnimalDescription = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 6].Text}";
-                        }
-                    }
-                    if (line.Text.Contains("PHYSICAL LOCATION OF ANIMALS"))
-                    {
-                        if (page.Lines[i + 5].Text.Contains("RELEASE OF QUARANTINE"))
-                        {
-                            roq.AnimalLocation = $"{page.Lines[i + 2].Text} {page.Lines[i + 3].Text} {page.Lines[i + 4].Text}";
-                        }
-                        else if (page.Lines[i + 6].Text.Contains("RELEASE OF QUARANTINE"))
-                        {
-                            roq.AnimalLocation = $"{page.Lines[i + 2].Text} {page.Lines[i + 4].Text} {page.Lines[i + 5].Text}";
-                        }
-                    }
-                    if (line.Text.Contains("RELEASE OF QUARANTINE") && i > 10)
-                    {
-                        roq.ReleaseOfQuarantineDate = $"{page.Lines[i + 1].Text}";
-                    }
-                    if (line.Text.Contains("Quarantine placed"))
-                    {
-                        roq.QuarantinedPlacedOn = $"{page.Lines[i + 1].Text}";
-                    }
-                    if (line.Text.Contains("Check if any conditions for Release and Describe Conditions"))
-                    {
-                        int startIndex = i + 1;
-                        while (!page.Lines[startIndex].Text.Contains("ACKNOWLEDGEMENT AND SIGNATURE"))
-                        {
-                            roq.ConditionDescription += $"{page.Lines[startIndex].Text}";
-                            startIndex++;
-                        }
-                    }
-                }
-            }
-        }
-
-        #endregion
-
     }
 }

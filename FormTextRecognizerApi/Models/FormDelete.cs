@@ -5,9 +5,8 @@ using System.Threading.Tasks;
 
 namespace FormTextRecognizerApi.Models
 {
-    public record FormCustom
+    public record FormDelete
     {
-        public string formURL { get; set; }
-        public string locationURL { get; set; }
+        public string modelId { get; set; }
     }
 }
