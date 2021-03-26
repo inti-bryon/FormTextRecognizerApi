@@ -9,11 +9,11 @@ To run locally, you must update the lines of code:
         private static readonly string apiKey = "[ENTER YOUR API KEY]";
         
         
-1. use the *api/FormRecognizer* endpoint for general text recognition and a simple string return
-  a. POST request body: {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*" } 
-2. use the *api/CustomModel* endpoint to analyze a form using a custom created model; model is deleted after use.
-  a. POST request body:  {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*",  "locationURL": "*[ENTER THE URL OF THE BLOB LOCATION WITH FORMS FOR MODEL CREATION]*"}
-3. use the *api/RemoveModel* endpoint to remove any non-used models 
-  a. POST request body:  {  "modelId": "*[ENTER THE ID OF THE MODEL TO DELETE]*"}
+1. Use the *api/FormRecognizer* endpoint for general text recognition and a simple string return
+2. POST request body: {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*" } 
+3. Use the *api/CustomModel* endpoint to analyze a form using a custom created model; model is deleted after use.
+4. POST request body:  {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*",  "locationURL": "*[ENTER THE URL OF THE BLOB LOCATION WITH FORMS FOR MODEL CREATION]*"}
+5. Use the *api/RemoveModel* endpoint to remove any non-used models 
+6. POST request body:  {  "modelId": "*[ENTER THE ID OF THE MODEL TO DELETE]*"}
   
    
