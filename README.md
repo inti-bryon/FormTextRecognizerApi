@@ -13,7 +13,6 @@ To run locally, you must update the lines of code:
 2. POST request body: {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*" } 
 3. Use the *api/CustomModel* endpoint to analyze a form using a custom created model; model is deleted after use.
 4. POST request body:  {  "formURL": "*[ENTER THE URL OF THE FORM TO ANALYZE]*",  "locationURL": "*[ENTER THE URL OF THE BLOB LOCATION WITH FORMS FOR MODEL CREATION]*"}
-5. Use the *api/RemoveModel* endpoint to remove any non-used models 
-6. POST request body:  {  "modelId": "*[ENTER THE ID OF THE MODEL TO DELETE]*"}
+
   
    
