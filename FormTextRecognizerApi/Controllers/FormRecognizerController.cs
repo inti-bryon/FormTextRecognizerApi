@@ -18,8 +18,8 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string returnString = string.Empty;
 
@@ -130,7 +130,8 @@ namespace FormTextRecognizerApi.Controllers
 
             //train model
             FormTrainingClient trainingClient = new FormTrainingClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
-            CustomFormModel model = await trainingClient.StartTrainingAsync(new Uri(trainingFileUrl), useTrainingLabels: false, $"VIS-Dynamic-Model-{DateTime.Now.ToShortTimeString()}").WaitForCompletionAsync();
+            CustomFormModel model = await trainingClient.StartTrainingAsync(new Uri(trainingFileUrl), useTrainingLabels: false, 
+                $"VIS-Dynamic-Model-{DateTime.Now.ToShortDateString()}-{DateTime.Now.ToLongTimeString()}").WaitForCompletionAsync();
 
             //string modelId = inModelID;
             string modelId = model.ModelId;
