@@ -18,8 +18,8 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
-        private static readonly string apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        private static readonly string endpoint = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+        private static readonly string apiKey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string returnString = string.Empty;
 
@@ -40,16 +40,29 @@ namespace FormTextRecognizerApi.Controllers
 
             return Ok(returnString);
         }
-
         [HttpPost]
-        [Route("api/CustomModel")]
-        public ActionResult CustomForm([FromBody] FormCustom newForm)
+        [Route("api/DynamicCustomModel")]
+        public ActionResult DynamicCustomForm([FromBody] FormCustom newForm)
         {
             returnString = string.Empty;
 
             var recognizerClient = AuthenticateClient();
 
-            var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.locationURL, newForm.formURL);            
+            var analyzeForm = AnalyzeDynamicCustomForm(recognizerClient, newForm.locationURL, newForm.formURL);
+            Task.WaitAll(analyzeForm);
+
+            return Ok(returnString);
+        }
+
+        [HttpPost]
+        [Route("api/CustomModel")]
+        public ActionResult CustomForm([FromBody] FormModel newForm)
+        {
+            returnString = string.Empty;
+
+            var recognizerClient = AuthenticateClient();
+
+            var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.modelID, newForm.formURL);            
             Task.WaitAll(analyzeForm);
 
             return Ok(returnString);
@@ -124,7 +137,7 @@ namespace FormTextRecognizerApi.Controllers
 
         #region Custom Form
 
-        private static async Task AnalyzeCustomForm(FormRecognizerClient recognizerClient, string trainingFileUrl, string formUrl)
+        private static async Task AnalyzeDynamicCustomForm(FormRecognizerClient recognizerClient, string trainingFileUrl, string formUrl)
         {
             RecognizeCustomFormsOptions options = new RecognizeCustomFormsOptions();
 
@@ -174,6 +187,49 @@ namespace FormTextRecognizerApi.Controllers
             await trainingClient.DeleteModelAsync(model.ModelId);
 
         }
+
+        private static async Task AnalyzeCustomForm(FormRecognizerClient recognizerClient, string modelID, string formUrl)
+        {
+            RecognizeCustomFormsOptions options = new RecognizeCustomFormsOptions();
+
+            //recognize form
+            RecognizeCustomFormsOperation operation = await recognizerClient.StartRecognizeCustomFormsFromUriAsync(modelID, new Uri(formUrl));
+            Response<RecognizedFormCollection> operationResponse = await operation.WaitForCompletionAsync();
+            RecognizedFormCollection forms = operationResponse.Value;
+
+            foreach (RecognizedForm form in forms)
+            {
+                returnString += $"Form of type: {form.FormType}{Environment.NewLine}";
+                foreach (FormField field in form.Fields.Values)
+                {
+                    returnString += $"Field '{field.Name}: ";
+
+                    if (field.LabelData != null)
+                    {
+                        returnString += $"    Label: '{field.LabelData.Text}";
+                    }
+
+                    returnString += $"    Value: '{field.ValueData.Text}";
+                    returnString += $"    Confidence: '{field.Confidence}{Environment.NewLine}";
+                }
+                returnString += $"Table data:{Environment.NewLine}";
+                foreach (FormPage page in form.Pages)
+                {
+                    for (int i = 0; i < page.Tables.Count; i++)
+                    {
+                        FormTable table = page.Tables[i];
+                        //Console.WriteLine($"Table {i} has {table.RowCount} rows and {table.ColumnCount} columns.");
+                        foreach (FormTableCell cell in table.Cells)
+                        {
+                            returnString += $"    Cell ({cell.RowIndex}, {cell.ColumnIndex}) contains {(cell.IsHeader ? "header" : "text")}: '{cell.Text}'{Environment.NewLine}";
+                        }
+                    }
+                }
+            }
+        }
+
+
+
         #endregion
     }
 }
