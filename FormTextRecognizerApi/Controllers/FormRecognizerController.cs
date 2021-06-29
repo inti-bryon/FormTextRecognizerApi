@@ -18,10 +18,11 @@ namespace FormTextRecognizerApi.Controllers
     {
 
         #region Static Variables 
-        private static readonly string endpoint = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-        private static readonly string apiKey = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+        private static readonly string endpoint = "https://ibsample01.cognitiveservices.azure.com/";
+        private static readonly string apiKey = "4fac4df99c1f4468895556b9e6811b82";
         private static readonly AzureKeyCredential credential = new AzureKeyCredential(apiKey);
         private static string returnString = string.Empty;
+        private static List<FormResponseObj> returnObjects = new List<FormResponseObj>();
 
         #endregion
 
@@ -64,6 +65,26 @@ namespace FormTextRecognizerApi.Controllers
 
             var analyzeForm = AnalyzeCustomForm(recognizerClient, newForm.modelID, newForm.formURL);            
             Task.WaitAll(analyzeForm);
+
+            return Ok(returnString);
+        }
+
+        [HttpPost]
+        [Route("api/CustomModelReturnObj")]
+        public ActionResult CustomFormReturnObj([FromBody] FormModel newForm)
+        {
+            returnString = string.Empty;
+
+
+            var recognizerClient = AuthenticateClient();
+
+            var analyzeForm = AnalyzeCustomFormReturnObj(recognizerClient, newForm.modelID, newForm.formURL);
+            Task.WaitAll(analyzeForm);
+
+            foreach(FormResponseObj o in returnObjects)
+            {
+                returnString = $"Pet Name: {o.PetsName}, Owner Name: {o.Owner}, Type of Animal: {o.Species}, Description: {o.Breed}, Color: {o.Color}";
+            }
 
             return Ok(returnString);
         }
@@ -228,7 +249,125 @@ namespace FormTextRecognizerApi.Controllers
             }
         }
 
+        private static async Task AnalyzeCustomFormReturnObj(FormRecognizerClient recognizerClient, string modelID, string formUrl)
+        {
+            RecognizeCustomFormsOptions options = new RecognizeCustomFormsOptions();
 
+            //recognize form
+            RecognizeCustomFormsOperation operation = await recognizerClient.StartRecognizeCustomFormsFromUriAsync(modelID, new Uri(formUrl));
+            Response<RecognizedFormCollection> operationResponse = await operation.WaitForCompletionAsync();
+            RecognizedFormCollection forms = operationResponse.Value;
+
+            foreach (RecognizedForm form in forms)
+            {
+                FormResponseObj rObj = new FormResponseObj();
+
+                foreach (FormField field in form.Fields.Values)
+                {
+
+                    switch(field.Name)
+                    {
+                        case "Birthdate":
+                            {
+                                rObj.Birthdate = field.ValueData.Text;
+                            }
+                            break;
+                        case "Breed":
+                            {
+                                rObj.Breed = field.ValueData.Text;
+                            }
+                            break;
+                        case "Color":
+                            {
+                                rObj.Color = field.ValueData.Text;
+                            }
+                            break;
+                        case "DateOfVaccination":
+                            {
+                                rObj.DateOfVaccination = field.ValueData.Text;
+                            }
+                            break;
+                        case "DueDate":
+                            {
+                                rObj.DueDate = field.ValueData.Text;
+                            }
+                            break;
+                        case "Duration":
+                            {
+                                rObj.Duration = field.ValueData.Text;
+                            }
+                            break;
+                        case "LotExpiration":
+                            {
+                                rObj.LotExpiration = field.ValueData.Text;
+                            }
+                            break;
+                        case "Manufacturer":
+                            {
+                                rObj.Manufacturer = field.ValueData.Text;
+                            }
+                            break;
+                        case "MicrochipNumber":
+                            {
+                                rObj.MicrochipNumber = field.ValueData.Text;
+                            }
+                            break;
+                        case "Owner":
+                            {
+                                rObj.Owner = field.ValueData.Text;
+                            }
+                            break;
+                        case "OwnerAddress":
+                            {
+                                rObj.OwnerAddress = field.ValueData.Text;
+                            }
+                            break;
+                        case "OwnerPhone":
+                            {
+                                rObj.OwnerPhone = field.ValueData.Text;
+                            }
+                            break;
+                        case "PetsName":
+                            {
+                                rObj.PetsName = field.ValueData.Text;
+                            }
+                            break;
+                        case "SerialNumber":
+                            {
+                                rObj.SerialNumber = field.ValueData.Text;
+                            }
+                            break;
+                        case "Sex":
+                            {
+                                rObj.Sex = field.ValueData.Text;
+                            }
+                            break;
+                        case "Species":
+                            {
+                                rObj.Species = field.ValueData.Text;
+                            }
+                            break;
+                        case "TagNumber":
+                            {
+                                rObj.TagNumber = field.ValueData.Text;
+                            }
+                            break;
+                        case "VaccinationLocation":
+                            {
+                                rObj.VaccinationLocation = field.ValueData.Text;
+                            }
+                            break;
+                        case "Weight":
+                            {
+                                rObj.Weight = field.ValueData.Text;
+                            }
+                            break;
+                    }
+                }
+
+                returnObjects.Add(rObj);
+            }
+        }
 
         #endregion
     }
